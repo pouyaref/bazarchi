@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Header from "../components/Header";
 import { useAuth } from "@/lib/auth-context";
@@ -16,7 +16,7 @@ interface Message {
   read: boolean;
 }
 
-export default function MessagesPage() {
+function MessagesContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useAuth();
@@ -252,5 +252,24 @@ export default function MessagesPage() {
         </div>
       </main>
     </>
+  );
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={
+      <>
+        <Header />
+        <main className="container mx-auto px-4 py-8 pb-24 md:pb-8">
+          <div className="bg-white rounded-lg shadow p-6">
+            <p className="text-slate-600 text-center py-8" dir="rtl">
+              در حال بارگذاری...
+            </p>
+          </div>
+        </main>
+      </>
+    }>
+      <MessagesContent />
+    </Suspense>
   );
 }

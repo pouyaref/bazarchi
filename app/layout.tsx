@@ -8,7 +8,6 @@ export const metadata: Metadata = {
   title: "بازار چی - BazaarChi",
   description: "Classified ads marketplace",
   manifest: "/manifest.json",
-  themeColor: "#2563eb",
 };
 
 export const viewport: Viewport = {
@@ -16,6 +15,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: "#2563eb",
 };
 
 export default function RootLayout({
