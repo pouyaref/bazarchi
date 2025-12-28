@@ -4,7 +4,16 @@ import fs from "fs";
 import path from "path";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
-const USERS_FILE = path.join(process.cwd(), "data", "users.json");
+
+// Use /tmp in Vercel (serverless) or data folder in local development
+const getUsersFilePath = () => {
+  if (process.env.VERCEL) {
+    return path.join("/tmp", "users.json");
+  }
+  return path.join(process.cwd(), "data", "users.json");
+};
+
+const USERS_FILE = getUsersFilePath();
 
 export interface User {
   id: string;
@@ -16,12 +25,25 @@ export interface User {
 
 // Initialize users file if it doesn't exist
 function ensureUsersFile() {
-  const dataDir = path.dirname(USERS_FILE);
+  const filePath = getUsersFilePath();
+  const dataDir = path.dirname(filePath);
+  
+  // In Vercel /tmp, directory always exists, but check anyway
   if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+    try {
+      fs.mkdirSync(dataDir, { recursive: true });
+    } catch (error) {
+      // Directory might already exist or be /tmp which always exists
+      console.log("Directory creation skipped:", error);
+    }
   }
-  if (!fs.existsSync(USERS_FILE)) {
-    fs.writeFileSync(USERS_FILE, JSON.stringify([], null, 2));
+  
+  if (!fs.existsSync(filePath)) {
+    try {
+      fs.writeFileSync(filePath, JSON.stringify([], null, 2));
+    } catch (error) {
+      console.error("Error creating users file:", error);
+    }
   }
 }
 
@@ -29,9 +51,11 @@ function ensureUsersFile() {
 function getUsers(): User[] {
   ensureUsersFile();
   try {
-    const data = fs.readFileSync(USERS_FILE, "utf-8");
+    const filePath = getUsersFilePath();
+    const data = fs.readFileSync(filePath, "utf-8");
     return JSON.parse(data);
-  } catch {
+  } catch (error) {
+    console.error("Error reading users file:", error);
     return [];
   }
 }
@@ -39,7 +63,13 @@ function getUsers(): User[] {
 // Write users to file
 function saveUsers(users: User[]) {
   ensureUsersFile();
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+  try {
+    const filePath = getUsersFilePath();
+    fs.writeFileSync(filePath, JSON.stringify(users, null, 2));
+  } catch (error) {
+    console.error("Error saving users file:", error);
+    throw error;
+  }
 }
 
 // Generate OTP (for testing, returns fixed code. In production, send SMS)

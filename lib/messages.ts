@@ -1,7 +1,15 @@
 import fs from "fs";
 import path from "path";
 
-const MESSAGES_FILE = path.join(process.cwd(), "data", "messages.json");
+// Use /tmp in Vercel (serverless) or data folder in local development
+const getMessagesFilePath = () => {
+  if (process.env.VERCEL) {
+    return path.join("/tmp", "messages.json");
+  }
+  return path.join(process.cwd(), "data", "messages.json");
+};
+
+const MESSAGES_FILE = getMessagesFilePath();
 
 export interface Message {
   id: string;
@@ -25,12 +33,25 @@ export interface Conversation {
 
 // Initialize messages file if it doesn't exist
 function ensureMessagesFile() {
-  const dataDir = path.dirname(MESSAGES_FILE);
+  const filePath = getMessagesFilePath();
+  const dataDir = path.dirname(filePath);
+  
+  // In Vercel /tmp, directory always exists, but check anyway
   if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+    try {
+      fs.mkdirSync(dataDir, { recursive: true });
+    } catch (error) {
+      // Directory might already exist or be /tmp which always exists
+      console.log("Directory creation skipped:", error);
+    }
   }
-  if (!fs.existsSync(MESSAGES_FILE)) {
-    fs.writeFileSync(MESSAGES_FILE, JSON.stringify([], null, 2));
+  
+  if (!fs.existsSync(filePath)) {
+    try {
+      fs.writeFileSync(filePath, JSON.stringify([], null, 2));
+    } catch (error) {
+      console.error("Error creating messages file:", error);
+    }
   }
 }
 
@@ -38,9 +59,11 @@ function ensureMessagesFile() {
 export function getMessages(): Message[] {
   ensureMessagesFile();
   try {
-    const data = fs.readFileSync(MESSAGES_FILE, "utf-8");
+    const filePath = getMessagesFilePath();
+    const data = fs.readFileSync(filePath, "utf-8");
     return JSON.parse(data);
-  } catch {
+  } catch (error) {
+    console.error("Error reading messages file:", error);
     return [];
   }
 }
@@ -48,7 +71,13 @@ export function getMessages(): Message[] {
 // Write messages to file
 function saveMessages(messages: Message[]) {
   ensureMessagesFile();
-  fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
+  try {
+    const filePath = getMessagesFilePath();
+    fs.writeFileSync(filePath, JSON.stringify(messages, null, 2));
+  } catch (error) {
+    console.error("Error saving messages file:", error);
+    throw error;
+  }
 }
 
 // Create or get conversation ID

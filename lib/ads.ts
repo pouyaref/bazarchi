@@ -1,7 +1,15 @@
 import fs from "fs";
 import path from "path";
 
-const ADS_FILE = path.join(process.cwd(), "data", "ads.json");
+// Use /tmp in Vercel (serverless) or data folder in local development
+const getAdsFilePath = () => {
+  if (process.env.VERCEL) {
+    return path.join("/tmp", "ads.json");
+  }
+  return path.join(process.cwd(), "data", "ads.json");
+};
+
+const ADS_FILE = getAdsFilePath();
 
 export interface Ad {
   id: string;
@@ -19,12 +27,25 @@ export interface Ad {
 
 // Initialize ads file if it doesn't exist
 function ensureAdsFile() {
-  const dataDir = path.dirname(ADS_FILE);
+  const filePath = getAdsFilePath();
+  const dataDir = path.dirname(filePath);
+  
+  // In Vercel /tmp, directory always exists, but check anyway
   if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+    try {
+      fs.mkdirSync(dataDir, { recursive: true });
+    } catch (error) {
+      // Directory might already exist or be /tmp which always exists
+      console.log("Directory creation skipped:", error);
+    }
   }
-  if (!fs.existsSync(ADS_FILE)) {
-    fs.writeFileSync(ADS_FILE, JSON.stringify([], null, 2));
+  
+  if (!fs.existsSync(filePath)) {
+    try {
+      fs.writeFileSync(filePath, JSON.stringify([], null, 2));
+    } catch (error) {
+      console.error("Error creating ads file:", error);
+    }
   }
 }
 
@@ -32,9 +53,11 @@ function ensureAdsFile() {
 export function getAds(): Ad[] {
   ensureAdsFile();
   try {
-    const data = fs.readFileSync(ADS_FILE, "utf-8");
+    const filePath = getAdsFilePath();
+    const data = fs.readFileSync(filePath, "utf-8");
     return JSON.parse(data);
-  } catch {
+  } catch (error) {
+    console.error("Error reading ads file:", error);
     return [];
   }
 }
@@ -42,7 +65,13 @@ export function getAds(): Ad[] {
 // Write ads to file
 function saveAds(ads: Ad[]) {
   ensureAdsFile();
-  fs.writeFileSync(ADS_FILE, JSON.stringify(ads, null, 2));
+  try {
+    const filePath = getAdsFilePath();
+    fs.writeFileSync(filePath, JSON.stringify(ads, null, 2));
+  } catch (error) {
+    console.error("Error saving ads file:", error);
+    throw error;
+  }
 }
 
 // Create new ad
